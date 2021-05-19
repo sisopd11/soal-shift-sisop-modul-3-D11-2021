@@ -1,149 +1,200 @@
-#include<stdio.h>
-#include<string.h>
-#include<pthread.h>
-#include<stdlib.h>
-#include<unistd.h>
-#include<sys/types.h>
-#include<sys/stat.h>
-#include<sys/wait.h>
-#include<dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <limits.h>
+#include <pthread.h>
+#include <ctype.h>
+#include <sys/stat.h>
+#include <stdbool.h>
+#include <dirent.h>
 
+char fileList[2048][PATH_MAX];
 pthread_t tid[500];
-char *workDir;
-char *tempDir;
-int currentInd;
 
-char* getFilename(char str[]);
-char* getExtension(char str[]);
-
-
-void moveFile(char src[], char dst[])
+void getFileExt(char* fileName, char *exten)
 {
-	FILE *file1;
-	FILE *file2;
-	int charr;
+    char *ext = strchr(fileName, '.');
+    if (ext == NULL) {
+        strcpy(exten,"Unknown");
+    } 
+    else if (ext == fileName){
+        strcpy(exten,"Hidden");
+    }
+    else
+    {
+        strcpy(exten,ext+1);
+    }
+}
 
-	file1 = fopen(src,"r");
-	file2 = fopen(dst,"w");
+bool checkExistAndRegFile(char *basePath)
+{
+    struct stat buffer;
+    int exist = stat(basePath,&buffer);
+    if(exist == 0)
+    {
+        if( S_ISREG(buffer.st_mode) ) return true;
+        else return false;
+    }
+    else  
+        return false;
+}
 
-	if(!file1)
-	{
-		fclose(file2);
-		return ;
-	}
-	if(!file2)
-	{
-		return ;
-	}
-	while((charr=fgetc(file1)) != EOF)
-	{
-		fputc(charr,file2);
-	}
+void *moveFile( void *arg )
+{
+    char basePath[PATH_MAX];
+    strcpy(basePath,(char *) arg);
 
-	fclose(file1);
-	fclose(file2);
+    if(checkExistAndRegFile(basePath))
+    {
+        //printf("%s\n",(char*)arg);
+        const char *p="/";
+        char *a,*b;
+        char fullPath[PATH_MAX];
+        strcpy(fullPath,(char *) arg);
 
-	remove(src);
-	return ;
+        char fileName[100];
+
+        for( a=strtok_r(fullPath,p,&b) ; a!=NULL ; a=strtok_r(NULL,p,&b) ) {
+            memset(fileName,0,sizeof(fileName));
+            strcpy(fileName,a);
+        }
+
+        char ext[PATH_MAX];
+        getFileExt(fileName,ext);
+
+        if(strcmp(ext,"Hidden") != 0 && strcmp(ext,"Unknown") != 0)
+        {
+            for(int i = 0; i<strlen(ext); i++)
+            {
+                ext[i] = tolower(ext[i]);
+            }
+        }
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            perror("getcwd() error");
+            return (void *) 0;
+        }
+
+        char destinationDir[PATH_MAX];
+        sprintf(destinationDir,"%s/%s",cwd,ext);
+        mkdir(destinationDir,0777);
+        char destination[PATH_MAX];
+        sprintf(destination,"%s/%s/%s",cwd,ext,fileName);
+	//same as move 
+        rename(basePath,destination);
+        return (void *) 1;
+    }
+    else return (void *) 0;
+}
+//template modul2 cek file in directory
+int listFilesRecursively(char *basePath, int *fileCount)
+{
+    char path[PATH_MAX];
+    struct dirent *dp;
+    DIR *dir = opendir(basePath);
+
+    if (!dir)
+        return 0;
+
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        {
+            char fullPath[PATH_MAX];
+            sprintf(fullPath,"%s/%s",basePath,dp->d_name);
+            //printf("%s\n", fullPath);
+            if(checkExistAndRegFile(fullPath))
+            {
+                sprintf(fileList[*fileCount],"%s",fullPath);
+                *fileCount += 1;
+            }
+            // Construct new path from our base path
+            strcpy(path, basePath);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
+
+            listFilesRecursively(path,fileCount);
+        }
+    }
+
+    closedir(dir);
+    return 1;
 }
 
 
-void* categories(void *arg)
+int main(int argc,char* argv[])
 {
-	pthread_t id=pthread_self();
-	int i;
-	char *extension;
-	char destination[500];
-	char path[500];
-	extension = getExtension((char *)arg);
 
-	if(extension == NULL)
-	{
-		strcpy(destination, "Unknown");
-	}
-	else
-	{
-		strcpy(destination, extension);
-		for(i=0;i<strlen(destination);i++)
+    char baseDir[PATH_MAX];
+
+    if(strcmp(argv[1],"-f")==0) 
+    {
+	int i=2;
+
+		while(argv[i]!=NULL)
 		{
-			if(destination[i]>64 && destination[i]<91)
-			{
-				destination[i]+=32;
-			}
+		    pthread_create( &(tid[i-2]), NULL, moveFile, (void*) argv[i]);
+		    i++;
 		}
-	}
 
-	if(mkdir(destination,0777) == -1);
+		for (int j=0;j<(i-2);j++)
+		{
+		    long cek;
+		    void *ptr;
+		    pthread_join( tid[j], &ptr);
+		    cek = (long) ptr;
+		    if(cek) printf("File %d : Berhasil Dikategorikan\n", j+1);
+		    else printf("File %d : Sad, gagal :(\n", j+1);
+		}
+        
+        return 0;
+    }
+   else if(!strcmp(argv[1],"*"))
+    {
+	int count_file=0;
+        getcwd(baseDir,sizeof(baseDir));
+	int cekFile = listFilesRecursively(baseDir, &count_file);
+    	for(int i = 0; i<count_file; i++)
+    	 {
+        	pthread_create( &(tid[i]), NULL, moveFile, (void*) fileList[i]);
+   	 }
 
-	snprintf(path,500,"%s/%s/%s",workDir,destination,getFilename((char *)arg));
-	moveFile((char *)arg, path);
-	return NULL;
-}
+   	 for (int i = 0; i < count_file; i++)
+    	{
+        	void *ptr;
+        	pthread_join( tid[i], &ptr);
+    	}
 
+    }
 
-int main(int argc, char **argv)
-{
-	char buffer[1000];
-	workDir = getcwd(buffer,1000);
-	int i=2,j,cek,cek2;
+    else if(strcmp(argv[1],"-d")==0) 
+    {
+	int cekFile,count_file = 0;
+        strcpy(baseDir,argv[2]);
+	cekFile = listFilesRecursively(baseDir, &count_file);
+    	for(int i = 0; i<count_file; i++)
+    	{
+        	pthread_create( &(tid[i]), NULL, moveFile, (void*) fileList[i]);
+   	}
 
-	if(strcmp(argv[1],"-f")==0)
+   	for (int i = 0; i < count_file; i++)
+    	{
+        	void *ptr;
+        	pthread_join( tid[i], &ptr);
+    	}
+
+	if(!cekFile)
+    	{
+		printf("Yah, gagal disimpan :(\n");
+		return 0;
+    	}
+	else
 	{
 		
-		while (argv[i] != NULL)
-		{
-			pthread_create(&(tid[i-2]),NULL,&categories,(void *)argv[i]);
-			i++;
-		}
-		for(j=0;j<(i-2);j++)
-		{
-			cek2 = pthread_join(tid[j],NULL);
-			if(cek2==0)
-			{
-				printf("File %d : Berhasil di kategorikan\n", j+1);
-			}
-			else
-			{
-				printf("File %d : Gagal, sad :(\n",j+1);
-			}		
-		}
-	}
-	if(strcmp(argv[1],"-d")==0)
-	{
-	}
-	if(strcmp(argv[1],"-*")==0)
-	{
-	}
-   return 0;
-}
+    		printf("Direktori sukses disimpan!\n");
+    	}
+    }
 
-char* getFilename(char str[])
-{
-	char* stop;
-	char* final;
-	stop = strchr(str,'/');
-	if(stop == NULL)
-	{
-		return str;
-	}
-	while(stop != NULL)
-	{
-		final = stop+1;
-		stop = strchr(stop+1,'/');
-	}
-	return final;
-}
-
-char* getExtension(char str[])
-{
-	char* stop = getFilename(str);
-	char* final = strchr(stop,'.');
-	if(final == NULL)
-	{
-		return NULL;
-	}
-	else
-	{
-		return (final+1);
-	}
+    return 0;
 }
