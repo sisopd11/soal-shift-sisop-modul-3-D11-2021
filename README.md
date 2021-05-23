@@ -569,4 +569,5 @@ Dapat diperhatikan bahwa disini terbentuk file Hidden dan juga file Unknown
 
 ![modul3-9](https://user-images.githubusercontent.com/80894892/118942545-6880ea00-b985-11eb-9f6e-8701cf0ff951.png)
 
-
+## Kendala pada saat Pengerjaan
+1. opsi -d dan \* tidak bisa di jalankan
