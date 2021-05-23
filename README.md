@@ -7,6 +7,32 @@ Modul 3
 |Dewi Mardani Cristin|05111940000225|
 |Avind Pramana Azhari|05111940000226|
 
+## Soal No 2
+
+### a: Jawaban dan Penjelasan
+Pada soal bagian a kita diminta untuk membuat program perkalian matrix (4x3 dengan 3x6) dan menampilkan hasilnya. Matriks nantinya akan berisi angka 1-20 (tidak perlu dibuat filter angka):
+
+Output:
+
+![Gambar output bagian a](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2a.png)
+
+### b: Jawaban dan Penjelasan
+Pada soal bagian b kita diminta untuk membuat program dengan menggunakan matriks output dari program sebelumnya (program soal2a.c) (Catatan!: gunakan shared memory). Kemudian matriks tersebut akan dilakukan perhitungan dengan matrix baru (input user) sebagai berikut contoh perhitungan untuk matriks yang a	da. Perhitungannya adalah setiap cel yang berasal dari matriks A menjadi angka untuk faktorial, lalu cel dari matriks B menjadi batas maksimal faktorialnya matri(dari paling besar ke paling kecil) (Catatan!: gunakan thread untuk perhitungan di setiap cel):
+
+Output:
+
+![Gambar output bagian b](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2b.png)
+
+### c: Jawaban dan Penjelasan
+Pada soal bagian c diminta untuk membuat program (soal2c.c) untuk mengecek 5 proses teratas apa saja yang memakan resource komputernya dengan command “ps aux | sort -nrk 3,3 | head -5” (Catatan!: Harus menggunakan IPC Pipes)
+
+Output:
+
+![Gambar output bagian c](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2c.png)
+
+## Kendala
+1. Masih belum bisa menghitung faktorial dengan tepat (soal2b.c)
+
 ## Soal No.3
   Seorang mahasiswa bernama Alex sedang mengalami masa gabut. Di saat masa gabutnya, ia memikirkan untuk merapikan sejumlah file yang ada di laptopnya. Karena jumlah filenya terlalu banyak, Alex meminta saran ke Ayub. Ayub menyarankan untuk membuat sebuah program C agar file-file dapat dikategorikan. Program ini akan memindahkan file sesuai ekstensinya ke dalam folder sesuai ekstensinya yang folder hasilnya terdapat di working directory ketika program kategori tersebut dijalankan.
   
