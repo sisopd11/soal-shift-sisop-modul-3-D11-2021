@@ -12,6 +12,89 @@ Modul 3
 ### a: Jawaban dan Penjelasan
 Pada soal bagian a kita diminta untuk membuat program perkalian matrix (4x3 dengan 3x6) dan menampilkan hasilnya. Matriks nantinya akan berisi angka 1-20 (tidak perlu dibuat filter angka):
 
+Mendeklarasikan dan membuat 3 function `input_matrixA`, `input_matrixB`, dan `multiply`:
+```
+// declaration
+int res = 0;
+int (*value)[10];
+int matrixA[4][3], matrixB[3][6]; // array
+pthread_t thread, thread2, thread3; // create thread
+```
+```
+// first matrix function
+void *input_matrixA(void *arg) {
+   printf("Matrix A:\n");
+   int i, k;
+   for(i = 0; i < 4; i++) {
+      for(k = 0; k < 3; k++) {
+         scanf("%d", &matrixA[i][k]);
+      }
+   }
+}
+```
+```
+// second matrix function
+void *input_matrixB(void *arg) { 
+   printf("Matrix B:\n");
+   int k, j;
+   for(k = 0; k < 3; k++) {
+      for(j = 0; j < 6; j++) {
+         scanf("%d", &matrixB[k][j]);
+      }
+   }
+}
+```
+```
+// matrix multiplication function
+void *multiply(void *arg) {
+   for(int i = 0; i < 4; i++) {
+      for(int j = 0;j < 6; j++) {
+         for(int k = 0; k < 3; k++) {
+            res+=matrixA[i][k] * matrixB[k][j]; // multiplication
+         }
+         value[i][j]= res; // set the final matrix value as result
+         res = 0; // result equal to 0 for recount
+      }
+   }
+   return NULL;
+}
+```
+
+Code di dalam `main function`:
+```
+// template shared memory 
+   key_t key = 1908;
+   int shmid = shmget(key, sizeof(value), IPC_CREAT | 0666); //
+   value = shmat(shmid, 0, 0);
+ ```
+ 3 thread untuk memanggil 2 `matrix function` dan `matrix multiplication function`:
+ ```
+   pthread_create(&thread, NULL, input_matrixA, NULL); // create thread1 for matrixA
+   pthread_join(thread,NULL);
+
+   pthread_create(&thread2, NULL, input_matrixB, NULL); // create thread2 for matrixB
+   pthread_join(thread2,NULL);
+   
+   for(int i = 0; i < 4; i++) { // set 4 rows
+    for(int j = 0; j < 6; j++) { // set 6 columns
+        value[i][j] = 0;
+    }
+      pthread_create(&thread3, NULL, multiply, NULL); // create thread3 for the final matrix
+      pthread_join(thread3,NULL);
+   }
+```
+Code memanggil hasil dari perkalian 2 matrix:
+```
+   // print the final matrix
+   printf("The Final Matrix: \n");
+   for(int i = 0; i < 4; i++) { // set 4 rows
+      for(int j = 0;j < 6;j++) {  // set 6 columns
+         printf("%d\t", value[i][j]); // print the number with a tab
+      }
+      printf("\n");
+   }
+```
+
 Output:
 
 ![Gambar output bagian a](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2a.png)
@@ -19,12 +102,118 @@ Output:
 ### b: Jawaban dan Penjelasan
 Pada soal bagian b kita diminta untuk membuat program dengan menggunakan matriks output dari program sebelumnya (program soal2a.c) (Catatan!: gunakan shared memory). Kemudian matriks tersebut akan dilakukan perhitungan dengan matrix baru (input user) sebagai berikut contoh perhitungan untuk matriks yang a	da. Perhitungannya adalah setiap cel yang berasal dari matriks A menjadi angka untuk faktorial, lalu cel dari matriks B menjadi batas maksimal faktorialnya matri(dari paling besar ke paling kecil) (Catatan!: gunakan thread untuk perhitungan di setiap cel):
 
+Mendeklarasikan dan membuat 3 function `input_matrix`, `fact` dan `factorial`:
+```
+//deklarasi
+int (*value)[10], matrix[4][6];
+unsigned long int fact_result[4][6];
+pthread_t thread, thread2;
+```
+```
+// new matrix function
+void *input_matrix(void *arg) {
+   printf("New Matrix:\n");
+   int i, j;
+   for(i = 0; i < 4; i++) {
+      for(j = 0; j < 6; j++) {
+         scanf("%d", &matrix[i][j]);
+      }
+   }
+}
+```
+```
+// basic factorial function
+unsigned long long fact(int num) {
+    unsigned long int result = 1;
+    for (int i = 1; i <= num; i++) {
+        result *= i;
+    }
+    return result;
+}
+```
+```
+// modified factorial function
+void *factorial(void *argument) {
+    unsigned long int result;
+    int *arg = (int *)argument;
+
+    int a = arg[0],
+        b = arg[1];
+
+    if (a >= b) {
+        result = fact(a) / fact(a - b);
+    } else if (a < b) {
+        result = fact(a);
+    } else if (a == 0 || b == 0) {
+        result = 0;
+    }
+
+    fact_result[arg[2]][arg[3]] = result;
+    return NULL;
+    
+}
+```
+
+Code di dalam `main function`:
+```
+//shared memory template
+key_t key = 1908;
+int (*value)[10];
+int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+value = shmat(shmid, 0, 0);
+```
+Code untuk mencetak matrix dari hasil soal2a
+```
+    // print shared matrix from soal2a.c (final matrix)
+    printf("Shared Matrix: \n");
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0;j < 6; j++) {
+            printf("%d\t", value[i][j]);
+        }
+        printf("\n");
+    }
+```
+
+Code untuk mencetak `input new matrix function`dan memanggil hasil `factorial function`:
+```
+ pthread_create(&thread, NULL, input_matrix, NULL); // create thread for new matrix
+    pthread_join(thread,NULL);
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 6; j++) {
+            int arguments[4];
+            arguments[0] = (*value)[10];
+            arguments[1] = matrix[i][j];
+            arguments[2] = i;
+            arguments[3] = j;
+
+            pthread_create(&thread, NULL, factorial, &arguments);// create thread for factorial
+            pthread_join(thread, NULL); // create thread for factorial
+        }
+    }
+```
+
+Code mencetak hasil `factorial function` dalam bentuk matrix:
+```
+// print the result matrix
+    printf("Result:\n");
+    int i, j;
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 6; j++) {
+            printf("%ld ", fact_result[i][j]);
+        }
+        printf("\n");
+    }
+```
+
 Output:
 
 ![Gambar output bagian b](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2b.png)
 
 ### c: Jawaban dan Penjelasan
 Pada soal bagian c diminta untuk membuat program (soal2c.c) untuk mengecek 5 proses teratas apa saja yang memakan resource komputernya dengan command “ps aux | sort -nrk 3,3 | head -5” (Catatan!: Harus menggunakan IPC Pipes)
+
+[Source Code](https://github.com/sisopd11/soal-shift-sisop-modul-3-D11-2021/blob/main/soal2/soal2c.c)
 
 Output:
 
